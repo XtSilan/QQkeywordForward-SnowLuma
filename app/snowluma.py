@@ -10,6 +10,7 @@ SnowLuma 的 WebUI 提供 OneBot 之外的运维入口（登录状态、进程�
 """
 from __future__ import annotations
 
+import json
 import time
 from typing import Any
 
@@ -31,6 +32,8 @@ class SnowLumaNotInitialized(RuntimeError):
 class SnowLumaClient:
     _shared_token = ""
     _shared_token_at = 0.0
+    # OneBot HTTP 的 token 从容器配置文件读出后缓存到类上，避免每次状态轮询都 exec 进容器
+    _onebot_token_cache: str | None = None
 
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -134,38 +137,83 @@ class SnowLumaClient:
         return await self.request("POST", "/api/config/onebot", json={"uin": uin, "config": config})
 
     # ---------- 登录账号 ----------
+    def _login_process_uin(self, processes: Any) -> str:
+        items = processes.get("list") if isinstance(processes, dict) else processes
+        for item in items or []:
+            if isinstance(item, dict) and item.get("loggedIn"):
+                uin = str(item.get("uin") or "").strip()
+                if uin and uin != "0":
+                    return uin
+        return ""
+
     async def logged_in_account(self) -> dict[str, str]:
         """返回当前已登录 QQ 的 {uin, nickname, avatar}；未登录返回空 dict。
 
-        优先问 SnowLuma 进程状态；没有已登录进程时再退回到 OneBot HTTP 的
-        get_login_info（QQ 刚登录、SnowLuma 还没刷新状态时更准）。
+        uin 以 SnowLuma 的进程状态为准（最可靠）；昵称/头像为尽力而为——OneBot HTTP
+        要求它自己的 access token，取不到时只回 uin，绝不能让取昵称失败影响登录判定。
         """
+        uin = ""
         try:
-            processes = await self.processes()
-            items = processes.get("list") if isinstance(processes, dict) else None
-            for item in items or []:
-                if isinstance(item, dict) and item.get("loggedIn"):
-                    uin = str(item.get("uin") or "").strip()
-                    if uin and uin != "0":
-                        info = await self._onebot_login_info()
-                        nickname = info.get("nickname") or info.get("nick_name") or ""
-                        return {"uin": uin, "nickname": str(nickname), "avatar": _avatar_url(uin)}
-        except Exception:  # noqa: BLE001 - 状态查询失败不应打断调用方
-            pass
+            uin = self._login_process_uin(await self.processes())
+        except Exception:  # noqa: BLE001 - 进程状态查询失败时退回 OneBot
+            uin = ""
+        details: dict[str, Any] = {}
         try:
-            info = await self._onebot_login_info()
-            uin = str(info.get("user_id") or "").strip()
-            if uin:
-                return {"uin": uin, "nickname": str(info.get("nickname") or ""), "avatar": _avatar_url(uin)}
-        except Exception:  # noqa: BLE001
-            pass
-        return {}
+            details = await self._onebot_login_info(uin)
+        except Exception:  # noqa: BLE001 - 拿不到昵称不影响判定登录
+            details = {}
+        if not uin:
+            uin = str(details.get("user_id") or "").strip()
+        if not uin:
+            return {}
+        nickname = str(details.get("nickname") or details.get("nick_name") or "")
+        return {"uin": uin, "nickname": nickname, "avatar": _avatar_url(uin)}
 
-    async def _onebot_login_info(self) -> dict[str, Any]:
-        """通过 SnowLuma 的 OneBot HTTP 取当前账号信息。"""
+    async def _onebot_token(self, uin: str = "") -> str:
+        """OneBot HTTP 的 access token：优先环境变量，其次从 SnowLuma 配置文件读。
+
+        SnowLuma 会给自己 httpServers 自动生成 token，读不出来就只能拿到 401。
+        """
+        configured = self.settings.onebot_access_token.strip()
+        if configured:
+            return configured
+        cache = self.__class__._onebot_token_cache
+        if cache is not None:
+            return cache
+        token = ""
+        if self.settings.control_enabled:
+            from app.control import DockerControl
+
+            paths = ([f"/app/data/config/onebot_{uin}.json"] if uin else []) + [
+                "/app/data/config/onebot.json"
+            ]
+            for path in paths:
+                output = ""
+                try:
+                    output = await DockerControl(self.settings).exec_run(
+                        "snowluma", ["sh", "-c", f"cat {path} 2>/dev/null || true"]
+                    )
+                except Exception:  # noqa: BLE001
+                    continue
+                try:
+                    data = json.loads(output.strip() or "{}")
+                except json.JSONDecodeError:
+                    continue
+                servers = (data.get("networks") or {}).get("httpServers") or []
+                for server in servers:
+                    if isinstance(server, dict) and server.get("accessToken"):
+                        token = str(server["accessToken"]).strip()
+                        break
+                if token:
+                    break
+        self.__class__._onebot_token_cache = token
+        return token
+
+    async def _onebot_login_info(self, uin: str = "") -> dict[str, Any]:
         headers: dict[str, str] = {}
-        if self.settings.onebot_access_token:
-            headers["Authorization"] = f"Bearer {self.settings.onebot_access_token}"
+        token = await self._onebot_token(uin)
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
         url = self.settings.onebot_http_url.rstrip("/") + "/get_login_info"
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(url, json={}, headers=headers)

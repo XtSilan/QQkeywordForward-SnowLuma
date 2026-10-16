@@ -34,6 +34,14 @@ export function connectSnowLuma(): Promise<{ applied: boolean; uin: string; oneb
   return apiJson("/api/snowluma/connect", { method: "POST" });
 }
 
+/** 重置 SnowLuma WebUI 令牌（同时也是控制台的登录密码）。 */
+export function resetSnowLumaPassword(newPassword: string): Promise<{ ok: boolean }> {
+  return apiJson("/api/snowluma/password", {
+    method: "POST",
+    body: JSON.stringify({ new_password: newPassword }),
+  });
+}
+
 export function fetchSnowLumaLogs(tail = 200): Promise<string> {
   return apiText(`/api/ops/logs/snowluma?tail=${tail}`, "日志读取失败");
 }

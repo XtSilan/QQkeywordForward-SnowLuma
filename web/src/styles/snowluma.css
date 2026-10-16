@@ -61,3 +61,13 @@ button.nav-item {
 
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- 登录页：全屏内嵌 SnowLuma 的初始化/登录页（同源） ---- */
+.login-frame {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  border: 0;
+  background: #0f1722;
+}

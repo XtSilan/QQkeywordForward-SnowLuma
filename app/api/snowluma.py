@@ -3,12 +3,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Response
+from fastapi import APIRouter, Body, Depends, HTTPException
 
-from app.api.auth import _set_session
 from app.api.deps import admin_guard, snowluma
 from app.control import DockerControl
-from app.services.snowluma_sync import ensure_initialized
+from app.services.snowluma_sync import ensure_initialized, read_bootstrap_token
 from app.snowluma import SnowLumaClient, SnowLumaNotInitialized
 from app.settings import Settings, get_settings
 
@@ -46,18 +45,19 @@ async def snowluma_status(
 
 @router.post("/init")
 async def snowluma_init(
-    response: Response,
     payload: dict[str, Any] = Body(default_factory=dict),
     client: SnowLumaClient = Depends(snowluma),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """初始化 SnowLuma WebUI：登录 → 同意协议 → 改密 → 落库，并直接登录控制台。
+    """初始化 SnowLuma WebUI：登录 → 同意协议 → 改密 → 落库。
 
-    传 `password`（容器日志里的初始密码）与可选 `new_password`（想设的新密码，
-    不传则生成随机强密码）；都不传时自动从 container 日志抓初始密码。
+    不签发控制台会话 —— 初始化只是"设置你自己的密码"，完成后回到登录页用新密码登录。
+    传 `password`（初始令牌）与可选 `new_password`；都不传时自动从容器日志抓初始令牌。
     """
     password = str(payload.get("password") or "").strip()
     new_password = str(payload.get("new_password") or "").strip()
+    if not password:
+        password = await read_bootstrap_token(settings)
     if password:
         try:
             token_payload = await client.login(password)
@@ -73,17 +73,47 @@ async def snowluma_init(
             target = new_password or _new_password()
             await client.change_password(password, target)
             client.store_password(target)
-            await client.login(target)
+            SnowLumaClient._shared_token = ""
+            SnowLumaClient._onebot_token_cache = None
         else:
             client.store_password(password)
-        _set_session(response, settings)
         return {"initialized": True, "source": "manual"}
 
     ok = await ensure_initialized(settings, SnowLumaClient(settings))
     if not ok:
-        raise HTTPException(status_code=400, detail="无法自动初始化，请提供初始密码")
-    _set_session(response, settings)
+        raise HTTPException(status_code=400, detail="无法自动初始化：请先在 snowluma 容器日志里拿到初始令牌")
     return {"initialized": True, "source": "log"}
+
+
+@router.post("/password")
+async def snowluma_reset_password(
+    payload: dict[str, Any] = Body(default_factory=dict),
+    client: SnowLumaClient = Depends(snowluma),
+) -> dict[str, Any]:
+    """重置 SnowLuma WebUI 令牌 —— 它同时也是控制台的登录密码。
+
+    当前密码由后端代持，用户只需给出新密码。
+    """
+    new_password = str(payload.get("new_password") or "").strip()
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="新密码至少 8 位")
+    current = client.stored_password()
+    if not current:
+        raise HTTPException(status_code=409, detail="SnowLuma WebUI 尚未初始化")
+    try:
+        await client.login(current)
+        await client.change_password(current, new_password)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    client.store_password(new_password)
+    # 旧 token 已失效，清缓存后用新密码重新登录
+    SnowLumaClient._shared_token = ""
+    SnowLumaClient._onebot_token_cache = None
+    try:
+        await client.login(new_password)
+    except Exception:  # noqa: BLE001 - 改密已成功，重新登录失败不影响结果
+        pass
+    return {"ok": True}
 
 
 @router.get("/account")

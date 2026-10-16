@@ -37,6 +37,19 @@ def _new_password() -> str:
     return f"Sl{secrets.token_urlsafe(16)}#7Aa"
 
 
+async def read_bootstrap_token(settings: Settings) -> str:
+    """从 snowluma 容器日志里取一次性初始密码（仅在全新数据卷首次启动时出现）。"""
+    if not settings.control_enabled:
+        return ""
+    try:
+        logs = await DockerControl(settings).logs("snowluma", tail=400)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("read snowluma bootstrap log failed: %s", exc)
+        return ""
+    match = BOOTSTRAP_LINE.search(logs)
+    return match.group(1) if match else ""
+
+
 async def ensure_initialized(settings: Settings, client: SnowLumaClient) -> bool:
     """确保 WebUI 已初始化（有可用密码）。返回是否处于已初始化状态。
 
@@ -45,17 +58,9 @@ async def ensure_initialized(settings: Settings, client: SnowLumaClient) -> bool
     """
     if client.stored_password():
         return True
-    if not settings.control_enabled:
+    initial = await read_bootstrap_token(settings)
+    if not initial:
         return False
-    try:
-        logs = await DockerControl(settings).logs("snowluma", tail=400)
-    except Exception as exc:  # noqa: BLE001 - 初始化失败不影响其它功能
-        logger.warning("read snowluma bootstrap log failed: %s", exc)
-        return False
-    match = BOOTSTRAP_LINE.search(logs)
-    if not match:
-        return False
-    initial = match.group(1)
     try:
         payload = await client.login(initial)
         if payload.get("mustChangePassword"):
@@ -184,4 +189,4 @@ async def run_snowluma_sync(settings: Settings) -> None:
         await asyncio.sleep(SYNC_INTERVAL_SECONDS)
 
 
-__all__ = ["run_snowluma_sync", "ensure_initialized", "SnowLumaNotInitialized"]
+__all__ = ["run_snowluma_sync", "ensure_initialized", "read_bootstrap_token", "SnowLumaNotInitialized"]

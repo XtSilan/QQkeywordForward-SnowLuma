@@ -1,16 +1,10 @@
-import { Mail, PackageSearch, ShieldCheck, UserCheck } from "lucide-react";
+import { KeyRound, Mail, PackageSearch, ShieldCheck, UserCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
-import {
-  getAutoLoginSettings,
-  getOrderDedupSettings,
-  getSmtpSettings,
-  saveAutoLoginSettings,
-  saveOrderDedupSettings,
-  saveSmtpSettings,
-} from "../api/settings";
+import { getAutoLoginSettings, getOrderDedupSettings, getSmtpSettings, saveAutoLoginSettings, saveOrderDedupSettings, saveSmtpSettings } from "../api/settings";
+import { resetSnowLumaPassword } from "../api/snowluma";
 import type { AutoLoginSettings, OrderDedupSettings, SmtpSettings } from "../types/api";
 
 type OnError = (message: string) => void;
@@ -20,6 +14,7 @@ const SECTIONS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "dedup", label: "订单去重提醒", icon: PackageSearch },
   { to: "auto-login", label: "掉线自动恢复", icon: UserCheck },
   { to: "smtp", label: "邮件发送", icon: Mail },
+  { to: "password", label: "密码重置", icon: KeyRound },
 ];
 
 const DEFAULT_SMTP: SmtpSettings = {
@@ -44,6 +39,82 @@ const DEFAULT_DEDUP: OrderDedupSettings = {
 };
 
 const DEFAULT_AUTO_LOGIN: AutoLoginSettings = { uin: "" };
+
+/**
+ * 密码重置：重置 SnowLuma WebUI 的访问令牌 —— 它同时就是控制台的登录令牌。
+ * 当前令牌由后端代持，这里只需要给出新令牌。
+ */
+export function PasswordResetSection({ onError }: { onError: OnError }) {
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setNotice("");
+    if (next !== confirm) {
+      onError("两次输入的新令牌不一致");
+      return;
+    }
+    setBusy(true);
+    try {
+      await resetSnowLumaPassword(next);
+      setNext("");
+      setConfirm("");
+      setNotice("令牌已重置。当前会话仍然有效，下次登录请使用新令牌。");
+    } catch (reason) {
+      onError(reason instanceof Error ? reason.message : "重置失败");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="panel form-panel settings-card">
+      <div className="panel-heading">
+        <div>
+          <div className="panel-kicker">TOKEN RESET</div>
+          <h3>密码重置</h3>
+        </div>
+        <span className="muted">即本站登录令牌</span>
+      </div>
+      <form className="settings-form" onSubmit={(event) => void submit(event)}>
+        <div className="callout">
+          <ShieldCheck size={17} />
+          <span>
+            这里重置的是 SnowLuma WebUI 的访问令牌，它同时就是控制台的登录令牌。
+            重置后本机已登录的会话仍然有效，下次登录请使用新令牌。
+          </span>
+        </div>
+        <label className="field">
+          <span>新令牌</span>
+          <input
+            type="password"
+            value={next}
+            onChange={(event) => setNext(event.target.value)}
+            minLength={8}
+            required
+          />
+        </label>
+        <label className="field">
+          <span>确认新令牌</span>
+          <input
+            type="password"
+            value={confirm}
+            onChange={(event) => setConfirm(event.target.value)}
+            minLength={8}
+            required
+          />
+        </label>
+        {notice && <div className="callout">{notice}</div>}
+        <button className="button primary" disabled={busy}>
+          {busy ? "重置中" : "重置令牌"}
+        </button>
+      </form>
+    </section>
+  );
+}
 
 /**
  * Settings shell: the main sidebar picks 系统设置, this secondary sidebar picks

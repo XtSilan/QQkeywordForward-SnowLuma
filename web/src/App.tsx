@@ -36,6 +36,7 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import {
   AutoLoginSection,
   OrderDedupSection,
+  PasswordResetSection,
   SmtpSection,
   SystemSettingsPage,
 } from "./pages/SystemSettingsPage";
@@ -252,6 +253,7 @@ function AppShell() {
             <Route path="dedup" element={<OrderDedupSection onError={setError} />} />
             <Route path="auto-login" element={<AutoLoginSection onError={setError} />} />
             <Route path="smtp" element={<SmtpSection onError={setError} />} />
+            <Route path="password" element={<PasswordResetSection onError={setError} />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

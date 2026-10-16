@@ -21,6 +21,7 @@ import { fetchAuthMe } from "./api/auth";
 import { getDashboard } from "./api/dashboard";
 import { getHealth, type Health } from "./api/health";
 import { restartService } from "./api/ops";
+import { getDevtoolsEntry } from "./api/snowluma";
 import { AccountBlock } from "./components/AccountBlock";
 import { NotificationBell } from "./components/NotificationBell";
 import { StatusDot } from "./components/StatusDot";
@@ -28,7 +29,6 @@ import { UpdateBadge } from "./components/UpdateBadge";
 import { BroadcastPage } from "./pages/BroadcastPage";
 import { ConnectionPage } from "./pages/ConnectionPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { DeveloperToolsPage } from "./pages/DeveloperToolsPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { KeywordPage } from "./pages/KeywordPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -62,7 +62,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/connect", label: "连接与 SnowLuma", icon: PlugZap },
   { to: "/logs", label: "运行日志", icon: TerminalSquare, pill: "LIVE" },
   { to: "/settings", label: "系统设置", icon: Settings2 },
-  { to: "/devtools", label: "开发者工具", icon: Wrench },
 ];
 
 export function App() {
@@ -115,6 +114,24 @@ function AppShell() {
     }
   };
 
+  const openDevtools = async () => {
+    setMobileOpen(false);
+    // 先同步开一个空白标签页，拿到令牌后再设置地址 —— 否则 await 之后的
+    // window.open 会被浏览器当作非用户触发的弹窗而拦截。
+    const tab = window.open("", "_blank");
+    try {
+      const entry = await getDevtoolsEntry();
+      if (tab) {
+        tab.location.replace(entry.url);
+      } else {
+        window.open(entry.url, "_blank");
+      }
+    } catch (reason) {
+      tab?.close();
+      setError(reason instanceof Error ? reason.message : "开发者工具入口获取失败");
+    }
+  };
+
   const snowlumaOnline = Boolean(dashboard?.snowluma?.logged_in);
   const title = NAV_ITEMS.find((item) => item.to === pathname)?.label ?? "页面不存在";
 
@@ -159,6 +176,16 @@ function AppShell() {
               {pill && <span className="nav-pill">{pill}</span>}
             </NavLink>
           ))}
+          {/* 开发者工具：SnowLuma WebUI 不允许被 iframe 内嵌（X-Frame-Options/CSP），
+              所以直接在新标签页打开同域名的 /snowluma/（自带令牌自动登录）。 */}
+          <button
+            type="button"
+            className="nav-item"
+            onClick={() => void openDevtools()}
+          >
+            <Wrench size={17} />
+            <span>开发者工具</span>
+          </button>
         </nav>
         <div className="sidebar-footer">
           {/* 左下角：当前登录 QQ 的头像与昵称，点击查看账号信息 */}
@@ -222,7 +249,6 @@ function AppShell() {
           <Route path="/history" element={<HistoryPage onError={setError} />} />
           <Route path="/broadcast" element={<BroadcastPage onError={setError} />} />
           <Route path="/connect" element={<ConnectionPage onError={setError} />} />
-          <Route path="/devtools" element={<DeveloperToolsPage onError={setError} />} />
           <Route path="/logs" element={<LogsPage onError={setError} />} />
           <Route path="/settings" element={<SystemSettingsPage />}>
             <Route index element={<Navigate to="dedup" replace />} />

@@ -1,16 +1,27 @@
-/* SnowLuma 接入相关的新组件：远程桌面/开发者工具 iframe、左上角更新徽标、左下角账号块。 */
+/* SnowLuma 接入相关的新组件：连接页布局、左上角更新徽标、左下角账号块。 */
 
-/* ---- 远程桌面 / 开发者工具 iframe ---- */
-.vnc-frame,
-.devtools-frame {
+/* ---- 连接页：远程桌面通栏在上，运行状态在下 ---- */
+/* 「开发者工具」是个动作按钮，但外观要和侧栏 NavLink 一致 */
+button.nav-item {
   width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.connect-layout { display: flex; flex-direction: column; gap: 14px; }
+.connect-vnc-panel { padding: 20px; }
+.connect-status-panel { padding: 20px; }
+.vnc-frame {
+  width: 100%;
+  height: min(72vh, 760px);
   border: 0;
   border-radius: 12px;
   background: #0b0f16;
+  display: block;
 }
-.vnc-frame { height: min(70vh, 720px); }
-.devtools-frame { height: calc(100vh - 200px); min-height: 520px; }
-.devtools-content { display: flex; flex-direction: column; gap: 4px; }
 
 /* ---- 左上角更新徽标（只提示，点击才部署） ---- */
 .update-badge-shell { position: relative; padding: 0 11px 6px; }
@@ -47,61 +58,102 @@
 .update-panel-body { display: grid; gap: 4px; font-size: 11px; }
 .update-panel-body code { font-size: 11px; }
 
-/* ---- 左下角账号块 ---- */
+/* ---- 左下角账号块：圆形头像 + 昵称 + 箭头，点击弹出菜单 ---- */
 .sidebar-footer { position: relative; }
 .account-block-shell { position: relative; }
+
 .account-block {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   width: 100%;
-  border: 1px solid #202c3e;
-  background: #0e1622;
-  border-radius: 10px;
   padding: 6px 8px;
+  border: 1px solid #202c3e;
+  border-radius: 9px;
+  background: #0e1622;
   color: inherit;
   cursor: pointer;
   text-align: left;
 }
+.account-block:hover { background: #141d2b; }
+
 .account-avatar {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   object-fit: cover;
+  flex: none;
+}
+.account-avatar.placeholder {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: none;
+  background: #26313f;
+  color: #93a3ba;
 }
-.account-avatar.placeholder { background: #1b2636; color: #7f8ea8; }
-.account-avatar.large { width: 40px; height: 40px; }
-.account-meta { display: grid; min-width: 0; }
+.account-avatar.large { width: 30px; height: 30px; }
+
+.account-meta { display: grid; flex: 1; min-width: 0; line-height: 1.3; }
 .account-meta strong {
   font-size: 12px;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.account-meta span { font-size: 10px; opacity: 0.7; }
-.account-panel {
+.account-meta span {
+  font-size: 10px;
+  opacity: 0.65;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-chevron { opacity: 0.5; flex: none; }
+
+.account-menu {
   position: absolute;
   left: 11px;
   right: 11px;
   bottom: calc(100% + 6px);
-  z-index: 30;
+  z-index: 40;
+  padding: 6px;
   border: 1px solid #202c3e;
-  background: #111a26;
-  border-radius: 10px;
-  padding: 10px;
-  display: grid;
-  gap: 8px;
-  box-shadow: 0 14px 32px #00000066;
+  border-radius: 11px;
+  background: #131c28;
+  box-shadow: 0 18px 40px #00000073;
 }
-.account-panel-head { display: flex; gap: 10px; align-items: center; }
-.account-panel-head div { display: grid; }
-.account-panel-head span { font-size: 10px; opacity: 0.7; }
-.account-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 11px; }
-.account-facts li { display: flex; justify-content: space-between; gap: 8px; }
+.account-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px 9px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid #202c3e;
+}
+.account-menu-head div { display: grid; min-width: 0; }
+.account-menu-head strong { font-size: 12px; }
+.account-menu-head span { font-size: 10px; opacity: 0.65; }
+
+.account-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.account-menu-item:hover { background: #1b2634; }
+
+.account-menu-info { display: grid; gap: 4px; padding: 7px 8px; font-size: 11px; }
+.account-menu-info div { display: flex; justify-content: space-between; gap: 8px; }
+.account-menu-info code { font-size: 11px; }
+.account-menu-info p { margin: 2px 0 0; }
 
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

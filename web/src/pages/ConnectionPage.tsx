@@ -76,8 +76,8 @@ export function ConnectionPage({ onError }: { onError: (message: string) => void
         </div>
       </div>
 
-      <div className="napcat-grid">
-        <section className="panel qr-panel">
+      <div className="connect-layout">
+        <section className="panel connect-vnc-panel">
           <div className="panel-heading">
             <div>
               <div className="panel-kicker">REMOTE DESKTOP</div>
@@ -117,7 +117,7 @@ export function ConnectionPage({ onError }: { onError: (message: string) => void
           )}
         </section>
 
-        <section className="panel napcat-info-panel">
+        <section className="panel connect-status-panel">
           <div className="panel-heading">
             <div>
               <div className="panel-kicker">SNOWLUMA STATUS</div>

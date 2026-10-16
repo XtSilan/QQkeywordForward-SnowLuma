@@ -1,4 +1,4 @@
-name: qq-bot
+name: snowluma
 
 # 单一入口架构：所有流量先到 nginx 网关，再按路径分发。
 #   宿主机只暴露 ${WEBUI_HOST_PORT} 一个端口，内部服务一律不发布到宿主机。
@@ -7,7 +7,7 @@ name: qq-bot
 services:
   nginx:
     image: nginx:1.27-alpine
-    container_name: qq-bot-nginx
+    container_name: sl-nginx
     restart: unless-stopped
     volumes:
       - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -27,7 +27,7 @@ services:
     # SnowLuma OneBot 实现（替代 NapCat）。Linux 下依赖 ptrace 注入 QQ 进程，
     # 因此 SYS_PTRACE 与 seccomp=unconfined 不能省。
     image: "${SNOWLUMA_IMAGE:-motricseven7/snowluma:latest}"
-    container_name: qq-bot-snowluma
+    container_name: sl-snowluma
     restart: unless-stopped
     shm_size: 1gb
     ulimits:
@@ -64,7 +64,7 @@ services:
         APP_VERSION: "${APP_VERSION:-dev}"
         APP_BUILD_TIME: "${APP_BUILD_TIME:-}"
         PIP_INDEX_URL: "${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
-    container_name: qq-bot-nonebot
+    container_name: sl-nonebot
     restart: unless-stopped
     command: python -m app.nonebot_bot
     env_file:
@@ -90,7 +90,7 @@ services:
         APP_VERSION: "${APP_VERSION:-dev}"
         APP_BUILD_TIME: "${APP_BUILD_TIME:-}"
         PIP_INDEX_URL: "${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
-    container_name: qq-bot-webui
+    container_name: sl-webui
     restart: unless-stopped
     command: uvicorn app.main:app --host 0.0.0.0 --port 8080
     env_file:
@@ -118,14 +118,16 @@ services:
       context: ./deploy
       args:
         PIP_INDEX_URL: "${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
-    image: qq-bot-updater:local
-    container_name: qq-bot-updater
+    image: snowluma-updater:local
+    container_name: sl-updater
     restart: unless-stopped
     env_file:
       - ./.env.prod
     environment:
       PROJECT_DIR: /project
-      UPDATER_HELPER_IMAGE: qq-bot-updater:local
+      # 与旧版 qq-bot 命名区分开，避免和同机上的其它部署撞镜像名/容器名
+      UPDATER_HELPER_IMAGE: snowluma-updater:local
+      UPDATER_HELPER_NAME: snowluma-updater-run
     volumes:
       - ./:/project
       - /var/run/docker.sock:/var/run/docker.sock
@@ -134,4 +136,5 @@ services:
 
 networks:
   botnet:
+    name: snowluma-net
     driver: bridge

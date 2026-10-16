@@ -47,6 +47,7 @@ export type UpdaterStatus = {
   local_short: string;
   remote_short: string;
   update_available: boolean | null;
+  behind_remote: boolean | null;
   build_version: string;
   build_stale: boolean | null;
   working_tree_dirty: boolean;

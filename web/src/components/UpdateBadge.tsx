@@ -26,6 +26,9 @@ export function UpdateBadge({ onError }: { onError: (message: string) => void })
 
   const available = Boolean(status?.update_available);
   const running = deploying || Boolean(status?.active);
+  // behind_remote：远端有新 commit；仅 build_stale：代码没变但镜像比 HEAD 旧，可重建对齐。
+  const behind = status?.behind_remote === true;
+  const label = behind ? "有新版本" : "可重建到最新";
 
   if (!status || (!available && !running)) return null;
 
@@ -51,13 +54,13 @@ export function UpdateBadge({ onError }: { onError: (message: string) => void })
         aria-expanded={open}
       >
         {running ? <Loader2 size={14} className="spin" /> : <ArrowUpCircle size={14} />}
-        <span>{running ? "正在部署更新" : "有新版本"}</span>
+        <span>{running ? "正在部署更新" : label}</span>
       </button>
 
       {open && (
         <div className="update-panel">
           <div className="update-panel-head">
-            <strong>发现新版本</strong>
+            <strong>{behind ? "发现新版本" : "运行镜像落后于最新提交"}</strong>
             <button className="icon-button" onClick={() => setOpen(false)} aria-label="关闭">
               <X size={15} />
             </button>

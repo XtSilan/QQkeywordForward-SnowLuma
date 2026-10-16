@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 def _set_session(response: Response, settings: Settings) -> None:
     response.set_cookie(
         "qq_bot_session", session_token(settings), max_age=settings.auth_session_ttl,
-        httponly=True, secure=settings.app_env == "prod", samesite="lax", path="/",
+        httponly=True, secure=settings.auth_cookie_secure, samesite="lax", path="/",
     )
 
 

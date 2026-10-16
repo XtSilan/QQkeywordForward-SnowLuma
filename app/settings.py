@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     smtp_timeout: int = 15
     auth_session_secret: str = "change-me-session-secret"
     auth_session_ttl: int = 86400
+    # 会话 Cookie 是否只允许 HTTPS 传输。生产走 HTTPS 时保持 true；
+    # 若暂时只通过 HTTP 反向代理访问（例如宝塔未配证书），必须设为 false，
+    # 否则浏览器不会回传会话 Cookie，表现为"登录成功但立刻又要求登录"。
+    auth_cookie_secure: bool = True
     upload_dir: str = "/app/data/nonebot/uploads"
     public_base_url: str = "http://localhost:8080"
     max_upload_size_mb: int = 10

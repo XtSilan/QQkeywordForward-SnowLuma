@@ -85,6 +85,27 @@ async def snowluma_init(
     return {"initialized": True, "source": "log"}
 
 
+@router.post("/password-check")
+async def snowluma_password_check(
+    payload: dict[str, Any] = Body(default_factory=dict),
+    client: SnowLumaClient = Depends(snowluma),
+) -> dict[str, Any]:
+    """问 SnowLuma 该密码是否满足它的强度策略，返回规则清单。
+
+    强度策略由 SnowLuma 自己强制；控制台只是把它翻译成用户能看懂的提示，
+    避免"重置失败但不知道原因"。
+    """
+    password = str(payload.get("password") or "")
+    if not password:
+        return {"valid": False, "rules": []}
+    try:
+        return await client.check_password_strength(password)
+    except SnowLumaNotInitialized as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/password")
 async def snowluma_reset_password(
     payload: dict[str, Any] = Body(default_factory=dict),
@@ -92,14 +113,25 @@ async def snowluma_reset_password(
 ) -> dict[str, Any]:
     """重置 SnowLuma WebUI 令牌 —— 它同时也是控制台的登录密码。
 
-    当前密码由后端代持，用户只需给出新密码。
+    当前密码由后端代持，用户只需给出新密码。强度由 SnowLuma 强制，不满足时
+    把未通过的规则原样回给前端，而不是抛一句莫名的 400。
     """
     new_password = str(payload.get("new_password") or "").strip()
     if len(new_password) < 8:
-        raise HTTPException(status_code=400, detail="新密码至少 8 位")
+        raise HTTPException(status_code=400, detail="新令牌至少 8 位")
     current = client.stored_password()
     if not current:
         raise HTTPException(status_code=409, detail="SnowLuma WebUI 尚未初始化")
+    try:
+        strength = await client.check_password_strength(new_password)
+    except Exception:  # noqa: BLE001 - 强度接口不可用就退回到直接改密
+        strength = None
+    if strength and not strength.get("valid"):
+        unmet = [str(r.get("label")) for r in strength.get("rules") or [] if not r.get("ok")]
+        raise HTTPException(
+            status_code=400,
+            detail="密码强度不足" + ("：" + "、".join(unmet) if unmet else "，请换一个更复杂的令牌"),
+        )
     try:
         await client.login(current)
         await client.change_password(current, new_password)

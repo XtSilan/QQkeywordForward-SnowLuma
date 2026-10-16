@@ -95,7 +95,17 @@ class SnowLumaClient:
                 await self.login(password)
                 headers["Authorization"] = f"Bearer {self._token}"
                 response = await client.request(method, self.base_url + path, headers=headers, **kwargs)
-        response.raise_for_status()
+        if response.status_code >= 400:
+            # SnowLuma 的错误原因在响应体的 message 字段里（例如"密码强度不足"），
+            # 直接 raise_for_status 会把原因丢掉，只留一句 "Client error '400 Bad Request'"。
+            detail = ""
+            try:
+                payload = response.json()
+                if isinstance(payload, dict):
+                    detail = str(payload.get("message") or payload.get("wording") or "")
+            except Exception:  # noqa: BLE001
+                detail = ""
+            raise RuntimeError(detail or f"SnowLuma 接口返回 {response.status_code}")
         return response.json()
 
     # ---------- 初始化流程 ----------
@@ -112,6 +122,29 @@ class SnowLumaClient:
     async def change_password(self, old: str, new: str) -> Any:
         return await self.request("POST", "/api/auth/change-password",
                                   json={"oldPassword": old, "newPassword": new})
+
+    async def check_password_strength(self, password: str) -> dict[str, Any]:
+        """问 SnowLuma 这个密码是否满足它的强度策略，返回归一化的 {valid, rules}。
+
+        SnowLuma 返回 {rules: [...], valid: bool}，但规则项的具体字段未公开，
+        这里做兼容读取，前端只需 label + 是否通过。
+        """
+        payload = await self.request("POST", "/api/auth/check-strength", json={"password": password})
+        raw = payload.get("rules") if isinstance(payload, dict) else []
+        rules: list[dict[str, Any]] = []
+        for item in raw or []:
+            if isinstance(item, dict):
+                label = str(item.get("label") or item.get("name") or item.get("message")
+                            or item.get("title") or item.get("id") or "").strip()
+                ok = bool(item.get("met", item.get("passed", item.get("valid", item.get("ok", False)))))
+            else:
+                label, ok = str(item), True
+            if label:
+                rules.append({"label": label, "ok": ok})
+        valid = bool(payload.get("valid")) if isinstance(payload, dict) else False
+        if not rules:
+            valid = valid or True
+        return {"valid": valid, "rules": rules}
 
     # ---------- 运行状态 ----------
     async def status(self) -> dict[str, Any]:

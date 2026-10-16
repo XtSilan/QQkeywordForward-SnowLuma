@@ -1,10 +1,10 @@
-import { KeyRound, Mail, PackageSearch, ShieldCheck, UserCheck } from "lucide-react";
+import { Check, KeyRound, Mail, PackageSearch, ShieldCheck, UserCheck, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
 import { getAutoLoginSettings, getOrderDedupSettings, getSmtpSettings, saveAutoLoginSettings, saveOrderDedupSettings, saveSmtpSettings } from "../api/settings";
-import { resetSnowLumaPassword } from "../api/snowluma";
+import { checkSnowLumaPassword, resetSnowLumaPassword, type PasswordStrength } from "../api/snowluma";
 import type { AutoLoginSettings, OrderDedupSettings, SmtpSettings } from "../types/api";
 
 type OnError = (message: string) => void;
@@ -42,13 +42,32 @@ const DEFAULT_AUTO_LOGIN: AutoLoginSettings = { uin: "" };
 
 /**
  * 密码重置：重置 SnowLuma WebUI 的访问令牌 —— 它同时就是控制台的登录令牌。
- * 当前令牌由后端代持，这里只需要给出新令牌。
+ *
+ * 当前令牌由后端代持，这里只需给出新令牌。强度要求由 SnowLuma 自己强制，
+ * 所以输入时会实时调用它的强度接口，把每条规则和是否通过列出来 ——
+ * 避免"提交后才报 400 却不知道哪里不达标"。
  */
 export function PasswordResetSection({ onError }: { onError: OnError }) {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [strength, setStrength] = useState<PasswordStrength | null>(null);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!next) {
+      setStrength(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void checkSnowLumaPassword(next)
+        .then(setStrength)
+        .catch(() => setStrength(null));
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [next]);
+
+  const unmet = (strength?.rules ?? []).filter((rule) => !rule.ok);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -62,6 +81,7 @@ export function PasswordResetSection({ onError }: { onError: OnError }) {
       await resetSnowLumaPassword(next);
       setNext("");
       setConfirm("");
+      setStrength(null);
       setNotice("令牌已重置。当前会话仍然有效，下次登录请使用新令牌。");
     } catch (reason) {
       onError(reason instanceof Error ? reason.message : "重置失败");
@@ -83,8 +103,8 @@ export function PasswordResetSection({ onError }: { onError: OnError }) {
         <div className="callout">
           <ShieldCheck size={17} />
           <span>
-            这里重置的是 SnowLuma WebUI 的访问令牌，它同时就是控制台的登录令牌。
-            重置后本机已登录的会话仍然有效，下次登录请使用新令牌。
+            重置的是 SnowLuma WebUI 的访问令牌，它同时就是控制台的登录令牌。
+            强度要求由 SnowLuma 决定，下面会把它的规则实时列出来。
           </span>
         </div>
         <label className="field">
@@ -97,6 +117,16 @@ export function PasswordResetSection({ onError }: { onError: OnError }) {
             required
           />
         </label>
+        {strength && strength.rules.length > 0 && (
+          <ul className="strength-rules">
+            {strength.rules.map((rule) => (
+              <li key={rule.label} className={rule.ok ? "ok" : "bad"}>
+                {rule.ok ? <Check size={13} /> : <X size={13} />}
+                {rule.label}
+              </li>
+            ))}
+          </ul>
+        )}
         <label className="field">
           <span>确认新令牌</span>
           <input
@@ -108,7 +138,7 @@ export function PasswordResetSection({ onError }: { onError: OnError }) {
           />
         </label>
         {notice && <div className="callout">{notice}</div>}
-        <button className="button primary" disabled={busy}>
+        <button className="button primary" disabled={busy || unmet.length > 0}>
           {busy ? "重置中" : "重置令牌"}
         </button>
       </form>

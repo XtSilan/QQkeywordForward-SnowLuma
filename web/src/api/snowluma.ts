@@ -42,6 +42,17 @@ export function resetSnowLumaPassword(newPassword: string): Promise<{ ok: boolea
   });
 }
 
+export type StrengthRule = { label: string; ok: boolean };
+export type PasswordStrength = { valid: boolean; rules: StrengthRule[] };
+
+/** 用 SnowLuma 自己的强度策略校验候选令牌，用于设置页实时提示。 */
+export function checkSnowLumaPassword(password: string): Promise<PasswordStrength> {
+  return apiJson("/api/snowluma/password-check", {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  });
+}
+
 export function fetchSnowLumaLogs(tail = 200): Promise<string> {
   return apiText(`/api/ops/logs/snowluma?tail=${tail}`, "日志读取失败");
 }

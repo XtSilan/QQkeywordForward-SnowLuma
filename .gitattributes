@@ -1,0 +1,14 @@
+# 统一行尾为 LF：Windows 开发 + Linux 容器（updater 用容器内 git 判断工作区是否干净）
+# 若不做归一化，容器内 git 会把 CRLF 工作区看成"全部已修改"，导致 updater 拒绝拉取部署。
+* text=auto eol=lf
+
+# 二进制文件不要做行尾转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.xwd binary

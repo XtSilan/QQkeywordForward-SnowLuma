@@ -52,6 +52,8 @@ export type UpdaterStatus = {
   build_stale: boolean | null;
   working_tree_dirty: boolean;
   helper_running: boolean;
+  /** 部署进行中时 helper 的实时日志尾部；用于显示拉取/构建进度 */
+  active_log?: string;
   active?: { trigger?: string; started_at?: string } | null;
   availability?: { update_available?: boolean; remote_sha?: string } | null;
   last_run?: {

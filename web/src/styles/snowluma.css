@@ -59,6 +59,22 @@ button.nav-item {
 .update-panel-body { display: grid; gap: 4px; font-size: 11px; }
 .update-panel-body code { font-size: 11px; }
 
+/* 部署进度：helper 容器拉取/构建日志尾部 */
+.update-progress {
+  margin: 0;
+  max-height: 150px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid #26354a;
+  border-radius: 8px;
+  background: #0b1220;
+  color: #9fb0c6;
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

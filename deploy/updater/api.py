@@ -65,6 +65,13 @@ async def status_payload(check_remote: bool = False) -> dict[str, Any]:
         except Exception as exc:  # noqa: BLE001
             errors.append(f"remote: {exc}")
     helper = await docker_api.helper_inspect()
+    # 部署进行中时把 helper 的实时日志尾部带上，控制台据此显示拉取/构建进度。
+    active_log = ""
+    if helper and helper.get("running"):
+        try:
+            active_log = "\n".join((await docker_api.helper_logs()).splitlines()[-40:])
+        except Exception:  # noqa: BLE001 - 进度是尽力而为，取不到不影响状态查询
+            active_log = ""
     version, stale = versioning.compute_build_state(
         state.get("last_run"), versioning.read_env_version(), local
     )
@@ -89,6 +96,7 @@ async def status_payload(check_remote: bool = False) -> dict[str, Any]:
         "update_available": (behind or stale) if local else None,
         "helper_running": bool(helper and helper["running"]),
         "helper": helper,
+        "active_log": active_log,
         "active": state.get("active"),
         "availability": state.get("availability"),
         "last_run": state.get("last_run"),

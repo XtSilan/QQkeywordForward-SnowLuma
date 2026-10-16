@@ -22,7 +22,6 @@ import { getDashboard } from "./api/dashboard";
 import { getHealth, type Health } from "./api/health";
 import { restartService } from "./api/ops";
 import { getDevtoolsEntry } from "./api/snowluma";
-import { AccountBlock } from "./components/AccountBlock";
 import { NotificationBell } from "./components/NotificationBell";
 import { StatusDot } from "./components/StatusDot";
 import { UpdateBadge } from "./components/UpdateBadge";
@@ -188,8 +187,6 @@ function AppShell() {
           </button>
         </nav>
         <div className="sidebar-footer">
-          {/* 左下角：当前登录 QQ 的头像与昵称，点击查看账号信息 */}
-          <AccountBlock />
           <div className="connection-row">
             <StatusDot online={snowlumaOnline} />
             <span>{snowlumaOnline ? "QQ 已连接" : "QQ 待连接"}</span>

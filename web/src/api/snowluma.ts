@@ -1,13 +1,8 @@
-import type { SnowLumaAccount, SnowLumaStatus } from "../types/api";
+import type { SnowLumaStatus } from "../types/api";
 import { apiJson, apiText } from "./client";
 
 export function getSnowLumaStatus(): Promise<SnowLumaStatus> {
   return apiJson<SnowLumaStatus>("/api/snowluma/status");
-}
-
-/** 当前登录的 QQ 账号（uin / 昵称 / 头像）；未登录时各字段为空串。 */
-export function getSnowLumaAccount(): Promise<SnowLumaAccount> {
-  return apiJson<SnowLumaAccount>("/api/snowluma/account");
 }
 
 /**

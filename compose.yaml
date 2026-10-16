@@ -1,0 +1,137 @@
+name: qq-bot
+
+# 单一入口架构：所有流量先到 nginx 网关，再按路径分发。
+#   宿主机只暴露 ${WEBUI_HOST_PORT} 一个端口，内部服务一律不发布到宿主机。
+#   路径：/ → webui（控制台）；/snowluma/ + /snowluma-api/ → snowluma WebUI；
+#        /novnc/ → 远程桌面；/updater/ → CI/CD 更新服务。
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: qq-bot-nginx
+    restart: unless-stopped
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/shim.js:/etc/nginx/snowluma-shim.js:ro
+    ports:
+      # 唯一的对外端口，其余服务全部走容器网络。
+      - "${WEBUI_HOST_PORT:-18080}:80"
+    depends_on:
+      webui:
+        condition: service_started
+      snowluma:
+        condition: service_started
+    networks:
+      - botnet
+
+  snowluma:
+    # SnowLuma OneBot 实现（替代 NapCat）。Linux 下依赖 ptrace 注入 QQ 进程，
+    # 因此 SYS_PTRACE 与 seccomp=unconfined 不能省。
+    image: "${SNOWLUMA_IMAGE:-motricseven7/snowluma:latest}"
+    container_name: qq-bot-snowluma
+    restart: unless-stopped
+    shm_size: 1gb
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    environment:
+      # 显式固定远程桌面密码，noVNC 才能自动填密（留空则每次随机，只在日志打印一次）。
+      VNC_PASSWD: "${VNC_PASSWD:-}"
+      SNOWLUMA_UID: "${SNOWLUMA_UID:-1000}"
+      SNOWLUMA_GID: "${SNOWLUMA_GID:-1000}"
+      SNOWLUMA_WEBUI_HOST: "0.0.0.0"
+      SNOWLUMA_WEBUI_PORT: "5099"
+      SNOWLUMA_LOG_LEVEL: "${SNOWLUMA_LOG_LEVEL:-info}"
+      SNOWLUMA_SCREEN: "${SNOWLUMA_SCREEN:-1920x1080x24}"
+      # 镜像默认开启：容器启动即注入 hook，扫码登录后自动切工作模式。
+      SNOWLUMA_HOOK_AUTOLOAD: "1"
+      SNOWLUMA_QQ_FLAGS: "${SNOWLUMA_QQ_FLAGS:---disable-gpu --disable-software-rasterizer --disable-gpu-compositing}"
+    volumes:
+      - ./data/snowluma/data:/app/data
+      - ./data/snowluma/config:/app/.config
+      - ./data/snowluma/share:/app/.local/share
+    networks:
+      - botnet
+
+  nonebot:
+    build:
+      context: .
+      args:
+        APP_VERSION: "${APP_VERSION:-dev}"
+        APP_BUILD_TIME: "${APP_BUILD_TIME:-}"
+        PIP_INDEX_URL: "${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
+    container_name: qq-bot-nonebot
+    restart: unless-stopped
+    command: python -m app.nonebot_bot
+    env_file:
+      - ./.env.prod
+    environment:
+      DATABASE_PATH: /app/data/nonebot/bot.sqlite3
+      LOG_DIR: /app/data/logs/nonebot
+      PYTHONPATH: /app
+    volumes:
+      - ./data/nonebot:/app/data/nonebot
+      - ./data/logs/nonebot:/app/data/logs/nonebot
+      - ./.env.prod:/app/.env.prod:ro
+    depends_on:
+      snowluma:
+        condition: service_started
+    networks:
+      - botnet
+
+  webui:
+    build:
+      context: .
+      args:
+        APP_VERSION: "${APP_VERSION:-dev}"
+        APP_BUILD_TIME: "${APP_BUILD_TIME:-}"
+        PIP_INDEX_URL: "${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
+    container_name: qq-bot-webui
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8080
+    env_file:
+      - ./.env.prod
+    environment:
+      DATABASE_PATH: /app/data/nonebot/bot.sqlite3
+      LOG_DIR: /app/data/logs/nonebot
+      PYTHONPATH: /app
+    volumes:
+      - ./data/nonebot:/app/data/nonebot
+      - ./data/logs/nonebot:/app/data/logs/nonebot
+      - ./.env.prod:/app/.env.prod:ro
+      # 需要读取 snowluma 容器日志 / 重启 snowluma 进程时启用（CONTROL_ENABLED=true）。
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      snowluma:
+        condition: service_started
+      nonebot:
+        condition: service_started
+    networks:
+      - botnet
+
+  updater:
+    build:
+      context: ./deploy
+      args:
+        PIP_INDEX_URL: "${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
+    image: qq-bot-updater:local
+    container_name: qq-bot-updater
+    restart: unless-stopped
+    env_file:
+      - ./.env.prod
+    environment:
+      PROJECT_DIR: /project
+      UPDATER_HELPER_IMAGE: qq-bot-updater:local
+    volumes:
+      - ./:/project
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - botnet
+
+networks:
+  botnet:
+    driver: bridge

@@ -1,0 +1,13 @@
+.env
+.env.prod
+__pycache__/
+*.py[cod]
+.pytest_cache/
+node_modules/
+web/dist/
+*.tsbuildinfo
+data/
+
+# 本地私有笔记 / 交付文档：含本机路径、端口、测试口令等环境信息，不入库
+docs/local/
+LOCAL_NOTES.md

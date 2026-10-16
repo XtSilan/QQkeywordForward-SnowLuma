@@ -11,7 +11,7 @@ import {
   updateBroadcastIntervals,
 } from "../api/broadcast";
 import { listGroups } from "../api/groups";
-import { isBotOnline } from "../api/napcat";
+import { isBotOnline } from "../api/snowluma";
 import { uploadImage } from "../api/ops";
 import { EmptyState } from "../components/EmptyState";
 import { GroupPicker } from "../components/GroupPicker";
@@ -181,7 +181,7 @@ export function BroadcastPage({ onError }: { onError: (message: string) => void 
         <div className="callout warning">
           <CircleAlert size={17} />
           <span>
-            Bot 未连接（NapCat 未登录或反向 WS 未就绪）。新建任务会保持排队，登录恢复后自动发送。
+            Bot 未连接（QQ 未登录或反向 WS 未就绪）。新建任务会保持排队，登录恢复后自动发送。
           </span>
         </div>
       )}

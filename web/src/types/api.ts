@@ -1,19 +1,65 @@
 /** API-facing types shared by pages, components and the api layer. */
 
-export type NapCatStatus = {
-  ok?: boolean;
-  isLogin?: boolean;
-  coreReady?: boolean;
-  loginPhase?: string;
-  loginError?: string;
-  error?: string;
+/** 当前登录的 QQ 账号（uin / 昵称 / 头像）。 */
+export type SnowLumaAccount = {
+  uin: string;
+  nickname: string;
+  avatar: string;
+};
+
+/** SnowLuma 注入的 QQ 进程状态。 */
+export type SnowLumaProcess = {
+  pid: number;
+  name: string;
+  injected: boolean;
+  connected: boolean;
+  loggedIn: boolean;
+  uin: string;
+  status: string;
+  error: string;
+};
+
+/** As returned by GET /api/snowluma/status. */
+export type SnowLumaStatus = {
+  initialized: boolean;
+  logged_in: boolean;
+  account: SnowLumaAccount;
+  processes: SnowLumaProcess[];
+  control_enabled: boolean;
+  onebot_ws_url: string;
+  error: string;
 };
 
 export type Dashboard = {
   config_revision: number;
-  napcat: NapCatStatus;
+  snowluma: { initialized: boolean; logged_in: boolean; account: SnowLumaAccount; error?: string };
   nonebot: { service: string; config_reload: boolean };
   stats?: { groups: number; keyword_hits_today: number; alerts_sent_today: number };
+};
+
+/** 更新服务状态（GET /api/updater/status）。 */
+export type UpdaterStatus = {
+  ok: boolean;
+  errors: string[];
+  enabled: boolean;
+  auto_update: boolean;
+  branch: string;
+  local_short: string;
+  remote_short: string;
+  update_available: boolean | null;
+  build_version: string;
+  build_stale: boolean | null;
+  working_tree_dirty: boolean;
+  helper_running: boolean;
+  active?: { trigger?: string; started_at?: string } | null;
+  availability?: { update_available?: boolean; remote_sha?: string } | null;
+  last_run?: {
+    ok?: boolean;
+    exit_code?: number | null;
+    finished_at?: string;
+    sha_after?: string;
+    log_tail?: string;
+  } | null;
 };
 
 export type Group = {
@@ -115,7 +161,7 @@ export type ChannelDraft = {
   display_name: string;
 };
 
-export type ServiceName = "napcat" | "nonebot";
+export type ServiceName = "snowluma" | "nonebot";
 export type LogService = ServiceName;
 
 export type SmtpSettings = {

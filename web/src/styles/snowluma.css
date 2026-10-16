@@ -1,0 +1,107 @@
+/* SnowLuma 接入相关的新组件：远程桌面/开发者工具 iframe、左上角更新徽标、左下角账号块。 */
+
+/* ---- 远程桌面 / 开发者工具 iframe ---- */
+.vnc-frame,
+.devtools-frame {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: #0b0f16;
+}
+.vnc-frame { height: min(70vh, 720px); }
+.devtools-frame { height: calc(100vh - 200px); min-height: 520px; }
+.devtools-content { display: flex; flex-direction: column; gap: 4px; }
+
+/* ---- 左上角更新徽标（只提示，点击才部署） ---- */
+.update-badge-shell { position: relative; padding: 0 11px 6px; }
+.update-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 1px solid #f0b42966;
+  background: #f0b4291a;
+  color: #f0b429;
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.update-badge.running { border-color: #38bdf866; background: #38bdf81a; color: #7dd3fc; }
+.update-panel {
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  top: 100%;
+  z-index: 30;
+  margin-top: 6px;
+  border: 1px solid #202c3e;
+  background: #111a26;
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  box-shadow: 0 14px 32px #00000066;
+}
+.update-panel-head { display: flex; align-items: center; justify-content: space-between; }
+.update-panel-body { display: grid; gap: 4px; font-size: 11px; }
+.update-panel-body code { font-size: 11px; }
+
+/* ---- 左下角账号块 ---- */
+.sidebar-footer { position: relative; }
+.account-block-shell { position: relative; }
+.account-block {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid #202c3e;
+  background: #0e1622;
+  border-radius: 10px;
+  padding: 6px 8px;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.account-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.account-avatar.placeholder { background: #1b2636; color: #7f8ea8; }
+.account-avatar.large { width: 40px; height: 40px; }
+.account-meta { display: grid; min-width: 0; }
+.account-meta strong {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-meta span { font-size: 10px; opacity: 0.7; }
+.account-panel {
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  bottom: calc(100% + 6px);
+  z-index: 30;
+  border: 1px solid #202c3e;
+  background: #111a26;
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  box-shadow: 0 14px 32px #00000066;
+}
+.account-panel-head { display: flex; gap: 10px; align-items: center; }
+.account-panel-head div { display: grid; }
+.account-panel-head span { font-size: 10px; opacity: 0.7; }
+.account-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 11px; }
+.account-facts li { display: flex; justify-content: space-between; gap: 8px; }
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -16,7 +16,7 @@ export function DashboardPage({
   action: string;
   restart: (service: ServiceName) => Promise<void>;
 }) {
-  const online = Boolean(dashboard?.napcat?.coreReady || dashboard?.napcat?.isLogin);
+  const online = Boolean(dashboard?.snowluma?.logged_in);
   return (
     <section className="content">
       <div className="welcome-row">
@@ -33,9 +33,9 @@ export function DashboardPage({
       <div className="stat-grid">
         <StatCard
           icon={<Activity size={18} />}
-          label="NapCat"
+          label="SnowLuma"
           value={online ? "在线" : "未连接"}
-          detail={dashboard?.napcat?.loginPhase || "等待状态"}
+          detail={dashboard?.snowluma?.account?.uin || "等待登录"}
           tone="green"
         />
         <StatCard
@@ -71,11 +71,11 @@ export function DashboardPage({
             <span className="muted">受控操作</span>
           </div>
           <ServiceRow
-            name="NapCat"
+            name="SnowLuma"
             description="QQ 登录、OneBot 连接与账号状态"
             online={online}
-            busy={action === "napcat"}
-            onRestart={() => void restart("napcat")}
+            busy={action === "snowluma"}
+            onRestart={() => void restart("snowluma")}
           />
           <ServiceRow
             name="NoneBot"
@@ -115,7 +115,7 @@ export function DashboardPage({
           <QuickAction icon={<KeyRound size={17} />} title="添加关键词" detail="配置群级匹配规则" />
           <QuickAction icon={<Bell size={17} />} title="配置关键词提醒" detail="关键词、群聊和提醒地址" />
           <QuickAction icon={<Send size={17} />} title="创建群发任务" detail="选择群聊并安排发送" />
-          <QuickAction icon={<ShieldCheck size={17} />} title="打开登录页" detail="查看二维码和登录状态" />
+          <QuickAction icon={<ShieldCheck size={17} />} title="打开连接页" detail="远程桌面与 OneBot 接入" />
         </div>
       </section>
     </section>

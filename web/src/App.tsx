@@ -5,11 +5,12 @@ import {
   KeyRound,
   LayoutDashboard,
   Menu,
+  PlugZap,
   RefreshCw,
   Send,
   Settings2,
-  ShieldCheck,
   TerminalSquare,
+  Wrench,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -20,15 +21,18 @@ import { fetchAuthMe } from "./api/auth";
 import { getDashboard } from "./api/dashboard";
 import { getHealth, type Health } from "./api/health";
 import { restartService } from "./api/ops";
+import { AccountBlock } from "./components/AccountBlock";
 import { NotificationBell } from "./components/NotificationBell";
 import { StatusDot } from "./components/StatusDot";
+import { UpdateBadge } from "./components/UpdateBadge";
 import { BroadcastPage } from "./pages/BroadcastPage";
+import { ConnectionPage } from "./pages/ConnectionPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { DeveloperToolsPage } from "./pages/DeveloperToolsPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { KeywordPage } from "./pages/KeywordPage";
 import { LoginPage } from "./pages/LoginPage";
 import { LogsPage } from "./pages/LogsPage";
-import { NapCatPage } from "./pages/NapCatPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import {
   AutoLoginSection,
@@ -55,9 +59,10 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/keywords", label: "关键词", icon: KeyRound },
   { to: "/history", label: "历史记录", icon: FileText },
   { to: "/broadcast", label: "群发任务", icon: Send },
-  { to: "/napcat", label: "登录与 NapCat", icon: ShieldCheck },
+  { to: "/connect", label: "连接与 SnowLuma", icon: PlugZap },
   { to: "/logs", label: "运行日志", icon: TerminalSquare, pill: "LIVE" },
   { to: "/settings", label: "系统设置", icon: Settings2 },
+  { to: "/devtools", label: "开发者工具", icon: Wrench },
 ];
 
 export function App() {
@@ -110,7 +115,7 @@ function AppShell() {
     }
   };
 
-  const napcatOnline = Boolean(dashboard?.napcat?.coreReady || dashboard?.napcat?.isLogin);
+  const snowlumaOnline = Boolean(dashboard?.snowluma?.logged_in);
   const title = NAV_ITEMS.find((item) => item.to === pathname)?.label ?? "页面不存在";
 
   return (
@@ -135,6 +140,10 @@ function AppShell() {
             <X size={18} />
           </button>
         </div>
+
+        {/* 左上角：有新版本时在这里提示，点击后才部署（后端默认只检测不部署） */}
+        <UpdateBadge onError={setError} />
+
         <div className="sidebar-caption">管理台</div>
         <nav>
           {NAV_ITEMS.map(({ to, label, icon: Icon, end, pill }) => (
@@ -152,9 +161,11 @@ function AppShell() {
           ))}
         </nav>
         <div className="sidebar-footer">
+          {/* 左下角：当前登录 QQ 的头像与昵称，点击查看账号信息 */}
+          <AccountBlock />
           <div className="connection-row">
-            <StatusDot online={napcatOnline} />
-            <span>{napcatOnline ? "NapCat 已连接" : "NapCat 待连接"}</span>
+            <StatusDot online={snowlumaOnline} />
+            <span>{snowlumaOnline ? "QQ 已连接" : "QQ 待连接"}</span>
           </div>
           <div className="connection-row">
             <StatusDot online={Boolean(dashboard)} />
@@ -210,7 +221,8 @@ function AppShell() {
           <Route path="/keywords" element={<KeywordPage onError={setError} />} />
           <Route path="/history" element={<HistoryPage onError={setError} />} />
           <Route path="/broadcast" element={<BroadcastPage onError={setError} />} />
-          <Route path="/napcat" element={<NapCatPage onError={setError} />} />
+          <Route path="/connect" element={<ConnectionPage onError={setError} />} />
+          <Route path="/devtools" element={<DeveloperToolsPage onError={setError} />} />
           <Route path="/logs" element={<LogsPage onError={setError} />} />
           <Route path="/settings" element={<SystemSettingsPage />}>
             <Route index element={<Navigate to="dedup" replace />} />

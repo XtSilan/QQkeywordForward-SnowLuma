@@ -62,6 +62,19 @@ docker compose up -d --build
 
 ## 首次使用
 
+### 0. 登录控制台
+
+控制台的登录密码就是 **SnowLuma WebUI 的管理员密码**（也兼容 `ADMIN_TOKEN`，便于脚本/CI），一套凭据即可。
+
+- **首次部署**：打开控制台会自动进入「初始化」向导 —— 填入 snowluma 容器日志里的一次性初始密码，
+  并设置你自己的新密码；后端会替你完成「同意协议 + 改密」，随后直接进入控制台。
+
+  ```bash
+  docker logs qq-bot-snowluma 2>&1 | grep -E "临时密码|initial credentials" | tail -n 1
+  ```
+
+- **之后**：直接用你设置的密码登录即可。
+
 ### 1. 登录 QQ（远程桌面）
 
 打开控制台 →「连接」，点击「接入远程桌面」，页面内嵌 noVNC（走 `/novnc/`，由网关代理，**不需要单独暴露 VNC 端口**）。

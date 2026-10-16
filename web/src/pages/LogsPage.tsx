@@ -31,7 +31,7 @@ export function LogsPage({ onError }: { onError: (message: string) => void }) {
       <div className="welcome-row">
         <div>
           <h2>运行日志</h2>
-          <p>查看 NoneBot 和 NapCat 最近输出，日志来源由后端控制。</p>
+          <p>查看 NoneBot 和 SnowLuma 最近输出，日志来源由后端控制。</p>
         </div>
         <button className="button secondary" onClick={() => void load()}>
           <RefreshCw size={15} />
@@ -48,10 +48,10 @@ export function LogsPage({ onError }: { onError: (message: string) => void }) {
             NoneBot
           </button>
           <button
-            className={service === "napcat" ? "log-tab active" : "log-tab"}
-            onClick={() => setService("napcat")}
+            className={service === "snowluma" ? "log-tab active" : "log-tab"}
+            onClick={() => setService("snowluma")}
           >
-            NapCat
+            SnowLuma
           </button>
         </div>
         <pre ref={preRef} className="log-output">{logs}</pre>

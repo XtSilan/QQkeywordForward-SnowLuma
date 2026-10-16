@@ -170,8 +170,9 @@ async def run_snowluma_sync(settings: Settings) -> None:
     logger.info("snowluma sync loop started (ws url=%s)", settings.onebot_ws_url)
     while True:
         try:
-            initialized = await ensure_initialized(settings, client)
-            if initialized:
+            # 不自动初始化：WebUI 密码由用户在控制台「初始化」向导里自行设置
+            # （填入容器日志的一次性初始密码 + 设自己的新密码）。未初始化时这里静默跳过。
+            if client.stored_password():
                 account = await client.logged_in_account()
                 uin = str(account.get("uin") or "")
                 if uin and settings.control_enabled:
